@@ -8,6 +8,7 @@ import com.squareup.okhttp.Request;
 import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
 import com.squareup.okhttp.ResponseBody;
+import com.squareup.okhttp.logging.HttpLoggingInterceptor;
 import com.squareup.okhttp.ws.WebSocket;
 import com.squareup.okhttp.ws.WebSocketCall;
 import com.squareup.okhttp.ws.WebSocketListener;
@@ -196,7 +197,7 @@ public class Socket {
             for (Map.Entry<String, String> entry : socketConnectionRequestHeaders.entrySet())
                 builder.addHeader(entry.getKey(), entry.getValue());
         final Request request = builder.build();
-        
+
         final WebSocketCall wsCall = WebSocketCall.create(httpClient, request);
         wsCall.enqueue(wsListener);
     }
@@ -356,5 +357,20 @@ public class Socket {
 
     static String replyEventName(final String ref) {
         return "chan_reply_" + ref;
+    }
+
+
+    private HttpLoggingInterceptor interceptor = null ;
+    public void setDebuggable(boolean enabled){
+        if (enabled){
+            if (interceptor == null)
+                interceptor = new HttpLoggingInterceptor();
+            interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+            if (!httpClient.interceptors().contains(interceptor))
+                httpClient.interceptors().add(interceptor);
+        } else {
+            if (httpClient.interceptors().contains(interceptor))
+                httpClient.interceptors().remove(interceptor);
+        }
     }
 }
