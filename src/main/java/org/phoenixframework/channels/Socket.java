@@ -11,13 +11,22 @@ import com.squareup.okhttp.ResponseBody;
 import com.squareup.okhttp.ws.WebSocket;
 import com.squareup.okhttp.ws.WebSocketCall;
 import com.squareup.okhttp.ws.WebSocketListener;
-import okio.Buffer;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import okio.Buffer;
 
 
 public class Socket {
@@ -28,6 +37,7 @@ public class Socket {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final OkHttpClient httpClient = new OkHttpClient();
+    private Map<String, String> socketConnectionRequestHeaders = null ;
     private WebSocket webSocket = null;
 
     private String endpointUri = null;
@@ -161,9 +171,10 @@ public class Socket {
         }
     }
 
-    public Socket(final String endpointUri) throws IOException {
+    public Socket(final String endpointUri, final Map<String, String> socketConnectionRequestHeaders) throws IOException {
         LOG.log(Level.FINE, "PhoenixSocket({0})", endpointUri);
         this.endpointUri = endpointUri;
+        this.socketConnectionRequestHeaders = socketConnectionRequestHeaders ;
         this.timer = new Timer("Reconnect Timer for " + endpointUri);
     }
 
@@ -179,7 +190,13 @@ public class Socket {
         disconnect();
         // No support for ws:// or ws:// in okhttp. See https://github.com/square/okhttp/issues/1652
         final String httpUrl = this.endpointUri.replaceFirst("^ws:", "http:").replaceFirst("^wss:", "https:");
-        final Request request = new Request.Builder().url(httpUrl).build();
+
+        Request.Builder builder = new Request.Builder().url(httpUrl);
+        if (socketConnectionRequestHeaders != null)
+            for (Map.Entry<String, String> entry : socketConnectionRequestHeaders.entrySet())
+                builder.addHeader(entry.getKey(), entry.getValue());
+        final Request request = builder.build();
+        
         final WebSocketCall wsCall = WebSocketCall.create(httpClient, request);
         wsCall.enqueue(wsListener);
     }
